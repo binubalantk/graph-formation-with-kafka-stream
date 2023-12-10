@@ -9,6 +9,9 @@ import org.apache.kafka.common.serialization.Serializer;
 import java.util.Map;
 
 public class NodeAdjacentSerde implements Serializer<NodeAdjacent>, Deserializer<NodeAdjacent>, Serde<NodeAdjacent> {
+    /**
+     * The Jackson JSON Object mapper instance
+     */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override

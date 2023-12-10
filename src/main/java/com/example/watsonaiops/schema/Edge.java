@@ -2,13 +2,22 @@ package com.example.watsonaiops.schema;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Edge  implements JsonSerdeData{
+public class Edge{
+    /**
+     * The Unique id of the 'To' Node
+     */
     @JsonProperty("uniqueIdTo")
     private String uniqueIdTo;
 
+    /**
+     * The Unique id of the 'From' Node
+     */
     @JsonProperty("uniqueIdFrom")
     private String uniqueIdFrom;
 
+    /**
+     * Edge type
+     */
     @JsonProperty("type")
     private String type;
 

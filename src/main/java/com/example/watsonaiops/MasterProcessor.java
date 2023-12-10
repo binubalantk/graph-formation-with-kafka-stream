@@ -15,15 +15,39 @@ import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 
 public class MasterProcessor {
+    /**
+     * The StreamBuilder Object
+     */
     StreamsBuilder streamsBuilder = new StreamsBuilder();
+
+    /**
+     * Kafka KStream for Nodes
+     */
     KStream<String, Node> nodeStream;
+
+    /**
+     * Kafka KStream for Alerts
+     */
     KStream<String, Alert> alertStream;
 
+    /**
+     * Kafka GlobalKTable for IP-Node map
+     */
     GlobalKTable<String, String> ipNodeMapGTable;
+
+    /**
+     * Kafka GlobalKTable for Hostname-Node map
+     */
     GlobalKTable<String, String> hostNodeMapGTable;
+
+    /**
+     * Kafka GlobalKTable for Node Adjacent list
+     */
     GlobalKTable<String, NodeAdjacent> adjGTable;
 
-
+    /**
+     * Method to initialize the Master processor topology
+     */
     public void initialize(){
         loadNodeStream();
         loadAlerts();
@@ -44,6 +68,9 @@ public class MasterProcessor {
 
     }
 
+    /**
+     * Method to load Node stream
+     */
     private void loadNodeStream(){
         // node
         nodeStream = streamsBuilder
@@ -53,6 +80,9 @@ public class MasterProcessor {
             .foreach((k, v)-> System.out.println("NODE: "+v.getUniqueId()));
     }
 
+    /**
+     * Method to load Alert stream
+     */
     private void loadAlerts(){
         alertStream = streamsBuilder
             .stream(Topics.ALERT, Consumed.with(Serdes.String(), new AlertSerde()));
@@ -61,6 +91,9 @@ public class MasterProcessor {
             .foreach((k, v)-> System.out.println("ALERT: "+v.getUniqueId()));
     }
 
+    /**
+     * Method to generate IP-Node maps
+     */
     private void mapIpToNodeId(){
         // node to ip address map
         nodeStream
@@ -68,6 +101,9 @@ public class MasterProcessor {
             .to(Topics.NODEID_IP_MAP, Produced.with(Serdes.String(), Serdes.String()));
     }
 
+    /**
+     * Method to generate Hostname-Node maps
+     */
     private void mapHostToNodeId(){
         // node to hostname map
         nodeStream
@@ -75,6 +111,9 @@ public class MasterProcessor {
             .to(Topics.NODEID_HOST_MAP, Produced.with(Serdes.String(), Serdes.String()));
     }
 
+    /**
+     * Method to load GlobalKTables for IP-Node map, Hostname-Node map and Node Adjacent list
+     */
     private void loadGlobalTables(){
         ipNodeMapGTable = streamsBuilder
         .globalTable(Topics.NODEID_IP_MAP,
@@ -89,6 +128,9 @@ public class MasterProcessor {
                     Consumed.with(Serdes.String(), new NodeAdjacentSerde()));
     }
 
+    /**
+     * Method to create new Node Adjacent list for a newly added Node
+     */
     private void createNodeAdjLists(){
         KStream<String, NodeAdjacent> mappedAdjNodes = nodeStream
             .map((k, node) ->
@@ -99,13 +141,16 @@ public class MasterProcessor {
     }
 
 
+    /**
+     * Method to match Alert resource IPs with Node Resource IPs
+     */
     private void matchAlertWithNodeByIp(){
         KStream<Alert, Alert> alertKeyStream = alertStream
                 .selectKey((k, alert) -> alert);
         alertKeyStream
                 .join(
                         ipNodeMapGTable,
-                        (k, v) -> ((Alert) v).getResource().getIpAddress(),
+                        (k, v) -> v.getResource().getIpAddress(),
                         (k, alert, nodeId) -> nodeId
                 )
                 .join(
@@ -116,6 +161,10 @@ public class MasterProcessor {
                 .to(Topics.ALERT_NODE_MAP, Produced.with(new AlertSerde(), new NodeSerde()));
 
     }
+
+    /**
+     * Method to match Alert resource Hostnames with Node Resource Hostnames
+     */
     private void matchAlertWithNodeByHost(){
         KStream<Alert, Alert> alertKeyStream = alertStream
                 .selectKey((k, alert) -> alert);
@@ -123,7 +172,7 @@ public class MasterProcessor {
         alertKeyStream
                 .join(
                         hostNodeMapGTable,
-                        (k, v) -> ((Alert) v).getResource().getHostName(),
+                        (k, v) -> v.getResource().getHostName(),
                         (k, alert, nodeId) -> nodeId
                 )
                 .join(
@@ -134,6 +183,9 @@ public class MasterProcessor {
                 .to(Topics.ALERT_NODE_MAP, Produced.with(new AlertSerde(), new NodeSerde()));
     }
 
+    /**
+     * Method to print Alert-Node map result
+     */
     private void printAlertNodeMap(){
         // Alert Node Data
         KStream<Alert, Node> alertNodeStream = streamsBuilder
@@ -143,6 +195,9 @@ public class MasterProcessor {
                 .foreach((alert, node)-> System.out.println("ALERT-NODE: "+alert.getUniqueId() + "-->" + node.getUniqueId()));
     }
 
+    /**
+     * Method to build the Kafka Stream Processor Topology
+     */
     private void build(){
         final KafkaStreams kafkaStreams = KafkaStreamFactory.create(streamsBuilder, "streams-watsonaiops-master");
         final CountDownLatch countDownLatch = new CountDownLatch(1);

@@ -2,17 +2,28 @@ package com.example.watsonaiops.schema;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Node implements JsonSerdeData{
-
+public class Node{
+    /**
+     * The Unique Node Id
+     */
     @JsonProperty("uniqueId")
     private String uniqueId;
 
+    /**
+     * The Node name
+     */
     @JsonProperty("name")
     private String name;
 
+    /**
+     * The list of Entity types
+     */
     @JsonProperty("entityTypes")
     private String[] entityTypes;
 
+    /**
+     * The Resource associated with the Node
+     */
     @JsonProperty("resource")
     private Resource resource;
 

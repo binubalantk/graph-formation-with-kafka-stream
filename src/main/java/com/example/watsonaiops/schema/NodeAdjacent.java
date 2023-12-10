@@ -6,9 +6,15 @@ import java.util.Collections;
 import java.util.List;
 
 public class NodeAdjacent {
+    /**
+     * The root (or From) Node
+     */
     @JsonProperty("rootNode")
     private Node rootNode;
 
+    /**
+     * The list of Adjacent Nodes
+     */
     @JsonProperty("adjNodes")
     private List<String> adjNodes = Collections.emptyList();
 
@@ -36,6 +42,10 @@ public class NodeAdjacent {
         this.adjNodes = adjNodes;
     }
 
+    /**
+     * Method to add a new node to the adjacent list, if not already exists
+     * @param toNodeId The 'To' Node Id
+     */
     public void addAdjNodeIfNotExists(String toNodeId){
         if(adjNodes.contains(toNodeId)){
             return;

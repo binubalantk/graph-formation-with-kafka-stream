@@ -7,33 +7,54 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.*;
 
-import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 
 public class EdgeResolveProcessor {
-
+    /**
+     * The StreamBuilder Object
+     */
     StreamsBuilder streamsBuilder = new StreamsBuilder();
+
+    /**
+     * Kafka KStream for Nodes
+     */
     KStream<String, Node> nodeStream;
+
+    /**
+     * Kafka KStream for Edges
+     */
     KStream<String, Edge> edgeKStream;
-    KStream<String, NodeAdjacent> nodeAdjStream;
 
+    /**
+     * Kafka GlobalKTable for Node Adjacent list
+     */
+    GlobalKTable<String, NodeAdjacent> nodeAdjGTable;
 
+    /**
+     * Method to initialize the Edge resolver processor topology
+     */
     public void initialize(){
         loadNodeStream();
         loadEdgeStream();
-        loadNodeAdjStream();
+        loadNodeAdjGTable();
         bindEdge();
 
         build();
 
     }
 
+    /**
+     * Method to load Node stream
+     */
     private void loadNodeStream(){
         // node
         nodeStream = streamsBuilder
             .stream(Topics.NODE_TOPOLOGICAL_DATA, Consumed.with(Serdes.String(), new NodeSerde()));
     }
 
+    /**
+     * Method to load Edge stream
+     */
     private void loadEdgeStream(){
         edgeKStream = streamsBuilder
                 .stream(Topics.EDGE_TOPOLOGICAL_DATA, Consumed.with(Serdes.String(), new EdgeSerde()));
@@ -41,47 +62,36 @@ public class EdgeResolveProcessor {
                 .foreach((k, v)-> System.out.println("EDGE: "+v.getUniqueIdFrom() + " --> " + v.getUniqueIdTo()));
     }
 
-    private void loadNodeAdjStream(){
-        nodeAdjStream = streamsBuilder
-            .stream(Topics.NODE_ADJACENT_LIST, Consumed.with(Serdes.String(), new NodeAdjacentSerde()));
-
-        nodeAdjStream
-            .foreach((k, nodeAdjacent)->{
-                String list = nodeAdjacent
-                        .getAdjNodes()
-                        .stream()
-                        .reduce("",(s, s2) -> s + s2);
-                System.out.println("Node Adj for node: "
-                        + nodeAdjacent.getRootNode().getUniqueId()
-                        + " [" + list + "]"
-                );
-            });
+    /**
+     * Method to load Node Adjacent list as GlobalKTable
+     */
+    private void loadNodeAdjGTable(){
+        nodeAdjGTable = streamsBuilder
+            .globalTable(Topics.NODE_ADJACENT_LIST, Consumed.with(Serdes.String(), new NodeAdjacentSerde()));
     }
 
+    /**
+     * Method to Bind Nodes and add Node Adjacent entries based on new Edge definition
+     */
     private void bindEdge(){
-        KStream<String, Edge> edgesMappedByFrom = edgeKStream
-                .selectKey((s, edge) -> edge.getUniqueIdFrom());
-
-        KStream<String, NodeAdjacent> mappedAdjNodes = nodeAdjStream
+        KStream<String, NodeAdjacent> mappedAdjNodes = edgeKStream
+            .selectKey((s, edge) -> edge.getUniqueIdFrom())
             .join(
-                edgesMappedByFrom,
-                (nodeAdjacent, edge) -> {
+                nodeAdjGTable,
+                (s, edge) -> s,
+                (edge, nodeAdjacent) -> {
                     nodeAdjacent.addAdjNodeIfNotExists(edge.getUniqueIdTo());
                     return nodeAdjacent;
-                },
-                JoinWindows.ofTimeDifferenceWithNoGrace(Duration.ofDays(360)),
-                    StreamJoined.with(
-                        Serdes.String(),
-                        new NodeAdjacentSerde(),
-                        new EdgeSerde()
-                    )
+                }
             );
 
         mappedAdjNodes
             .to(Topics.NODE_ADJACENT_LIST, Produced.with(Serdes.String(), new NodeAdjacentSerde()));
     }
 
-
+    /**
+     * Method to build the Kafka Stream Processor Topology
+     */
     private void build(){
         final KafkaStreams kafkaStreams = KafkaStreamFactory.create(streamsBuilder, "streams-watsonaiops-edge-resolve");
         final CountDownLatch countDownLatch = new CountDownLatch(1);

@@ -9,6 +9,9 @@ import org.apache.kafka.common.serialization.Serializer;
 import java.util.Map;
 
 public class EdgeSerde implements Serializer<Edge>, Deserializer<Edge>, Serde<Edge> {
+    /**
+     * The Jackson JSON Object mapper instance
+     */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override

@@ -3,10 +3,15 @@ package com.example.watsonaiops.schema;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Resource {
-
+    /**
+     * The Host name
+     */
     @JsonProperty("hostname")
     private String hostName;
 
+    /**
+     * The IP Address
+     */
     @JsonProperty("ipaddress")
     private String ipAddress;
 

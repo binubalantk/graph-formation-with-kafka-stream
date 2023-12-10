@@ -2,16 +2,28 @@ package com.example.watsonaiops.schema;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Alert  implements JsonSerdeData{
+public class Alert{
+    /**
+     * The unique id for an Alert
+     */
     @JsonProperty("uniqueId")
     private String uniqueId;
 
+    /**
+     * The Alert state
+     */
     @JsonProperty("state")
     private String state;
 
+    /**
+     * The Alert Summary
+     */
     @JsonProperty("summary")
     private String summary;
 
+    /**
+     * The Alert Resource
+     */
     @JsonProperty("resource")
     private Resource resource;
 
